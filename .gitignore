@@ -1,0 +1,23 @@
+# Izvršni fajlovi (binaries)
+a.out
+*.out
+test_map
+main
+
+# Objektni fajlovi
+*.o
+*.obj
+
+# Valgrind i Debug fajlovi
+vgcore.*
+*.dSYM/
+valgrind-out.txt
+
+# Arhive
+*.a
+*.so
+*.dll
+
+# OS specifični fajlovi
+.DS_Store
+Thumbs.db
