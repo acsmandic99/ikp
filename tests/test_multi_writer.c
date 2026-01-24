@@ -1,4 +1,6 @@
+#include <pthread.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "stdio.h"
 #include "../strukture/hashmapa/hashmap.h"
 
@@ -39,19 +41,35 @@ void* multi_reader_thread(void* arg) {
     //printf("Reader: Pretraga zavrsena. Pronadjeno elemenata: %d\n", found);
     return NULL;
 }
-
+void* multi_deleter_thread(void* arg)
+{
+    int id = *(int*)arg;
+    for(int i = 0;i<OPS_PER_THREAD;i++)
+    {
+        hashmap_remove(hm, (id * OPS_PER_THREAD) + i);
+    }
+    return NULL;
+}
 int main() {
     hm = init_hashmap(100);
 
     pthread_t writers[NUM_WRITERS];
     pthread_t readers[NUM_READERS];
+    pthread_t deleters[NUM_WRITERS];
     int writer_ids[NUM_WRITERS];
+    int deleter_ids[NUM_WRITERS];
 
     printf("Pokrecem %d pisca i %d citaca...\n", NUM_WRITERS, NUM_READERS);
 
     for(int i = 0; i < NUM_WRITERS; i++) {
         writer_ids[i] = i;
         pthread_create(&writers[i], NULL, multi_writer_thread, &writer_ids[i]);
+    }
+    sleep(2);
+    for(int i = 0;i < NUM_WRITERS;i++)
+    {
+        deleter_ids[i] = i;
+        pthread_create(&deleters[i],NULL,multi_deleter_thread,&deleter_ids[i]);
     }
 
     for(int i = 0; i < NUM_READERS; i++) {
@@ -60,6 +78,7 @@ int main() {
 
     for(int i = 0; i < NUM_WRITERS; i++) {
         pthread_join(writers[i], NULL);
+        pthread_join(deleters[i],NULL);
     }
     for(int i = 0; i < NUM_READERS; i++) {
         pthread_join(readers[i], NULL);
