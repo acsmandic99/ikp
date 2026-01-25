@@ -156,7 +156,7 @@ void* get_value(Hashmap* hm,int key)
 
 //hashmapa samo izbaci iz kolekcije
 //data deo ostaje u memoriji
-void hashmap_remove(Hashmap* hm,int key)
+void* hashmap_remove(Hashmap* hm,int key)
 {
     pthread_rwlock_wrlock(&hm->lock);
     int index = (unsigned int)hash(key) % hm->capacity;
@@ -165,6 +165,7 @@ void hashmap_remove(Hashmap* hm,int key)
     {
         if(((Entry*)curr->data)->key == key)
         {
+            void* data = ((Entry*)curr->data)->data;
             free(curr->data);
             list_remove_node_at(hm->data[index],curr);
             hm->size--;
@@ -175,7 +176,7 @@ void hashmap_remove(Hashmap* hm,int key)
                 resize(hm, new_capacity);
             }
             pthread_rwlock_unlock(&hm->lock);
-            return;
+            return data;
         }
         curr = curr->next;
     }

@@ -21,3 +21,10 @@ valgrind-out.txt
 # OS specifični fajlovi
 .DS_Store
 Thumbs.db
+
+# CMake privremeni fajlovi i build folder
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile

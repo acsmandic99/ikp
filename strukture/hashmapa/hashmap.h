@@ -23,7 +23,7 @@ void hash_map_put(Hashmap* hashm,int key,void *value);
 void* get_value(Hashmap* hm,int key);
 void print_hash_map(Hashmap* hm);
 void free_hash_map(Hashmap* hm);
-void hashmap_remove(Hashmap* hashm,int key);
+void* hashmap_remove(Hashmap* hashm,int key);
 
 
 //dokumentacija-> sta unaprediti:
