@@ -23,7 +23,7 @@ void* create_listener_thread_func(void* arg)
     int addrlen = sizeof(address);
     int opt = 1;
     int port = PORT + i;
-    if((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+    if((server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == 0)
     {
         perror("Socket failed");
         exit(EXIT_FAILURE);
@@ -39,7 +39,7 @@ void* create_listener_thread_func(void* arg)
     }
     
     
-    if(listen(server_fd, 3) < 0)
+    if(listen(server_fd, 3) == -1)
     {
         perror("Listen");
         return NULL;

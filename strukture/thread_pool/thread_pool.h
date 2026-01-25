@@ -7,17 +7,17 @@
 struct Agregator;
 
 
-typedef struct Request
+typedef struct ClientRequest
 {
     int client_fd;
     long long client_id;
-}Request;
+}ClientRequest;
 
 typedef struct ThreadPool
 {
     pthread_t* threads;   
     int threads_num;     
-    Request* queue;        
+    ClientRequest* queue;        
     struct Agregator* agregator;       
     int queue_capacity;
     int queue_size;
@@ -31,5 +31,5 @@ typedef struct ThreadPool
 
 
 ThreadPool* init_thread_pool(struct Agregator* agregator,int THREADS_NUM, int queue_capacity);
-int thread_pool_add_task(ThreadPool* tp, Request req);
+int thread_pool_add_task(ThreadPool* tp, ClientRequest req);
 #endif

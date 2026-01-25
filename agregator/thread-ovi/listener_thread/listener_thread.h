@@ -1,6 +1,5 @@
 #ifndef LISTENER
 #define LISTENER
-#include "../../../strukture/hashmapa/hashmap.h"
 
 
 struct Agregator;

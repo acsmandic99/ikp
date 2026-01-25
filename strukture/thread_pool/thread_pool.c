@@ -20,7 +20,7 @@ ThreadPool* init_thread_pool(struct Agregator* agregator,int THREADS_NUM, int qu
     tp->tail = 0;
     tp->shutdown = 0;
 
-    tp->queue = (Request*)malloc(queue_capacity * sizeof(Request));
+    tp->queue = (ClientRequest*)malloc(queue_capacity * sizeof(ClientRequest));
     if(tp->queue == NULL)
     {
         free(tp);
@@ -51,7 +51,7 @@ ThreadPool* init_thread_pool(struct Agregator* agregator,int THREADS_NUM, int qu
 }
 
 
-int thread_pool_add_task(ThreadPool* tp, Request req) {
+int thread_pool_add_task(ThreadPool* tp, ClientRequest req) {
 
     pthread_mutex_lock(&tp->lock);
     if (tp->queue_size == tp->queue_capacity) {

@@ -1,14 +1,12 @@
-// main.c
-// #include "agregator/agregator.h"
-// #include <stdio.h>
 #include "agregator/agregator.h"
-#include "strukture/hashmapa/hashmap.h"
+#include <sched.h>
 #include <stdio.h>
-#include <stdlib.h>
 int main() {
    printf("--- AGREGATOR TEST START ---\n");
-
-    Agregator* aggr = init_agregator(0, 4, 100);
+    printf("\nUnesi broj porta ");
+    int port;
+    scanf("%d",&port);
+    Agregator* aggr = init_agregator(0, 4, 100,port);
 
     if (!aggr) {
         printf("Inicijalizacija nije uspela!\n");
