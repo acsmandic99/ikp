@@ -24,9 +24,19 @@ typedef struct Agregator{
     int waiting_for_parent;
     
     int parent_fd; 
-    int i;//da nam port ne bude isti svugde
+    
+
+    int listener_port;
+    int offset;//da nam port ne bude isti svugde
+
+    int shutdown;
+
+    pthread_t listener_tid;
+    pthread_t epoll_tid;
+    pthread_t parent_tid;
 } Agregator;
 
-Agregator* init_agregator(int offset,int num_threads,int queue_size,int parent_port);
+Agregator* init_agregator(int offset,int num_threads,int queue_size,int listener_port,int parent_port);
 void* start_epoll_loop(void* arg);
+void destroy_agregator(Agregator* agregator);
 #endif

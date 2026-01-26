@@ -35,14 +35,11 @@ int main(int argc, char const *argv[]) {
 
     printf("Povezan na agregator na portu %d.\n", port);
     printf("Komande: Unesite kolicinu kW koju zelite (0 za izlaz)\n");
+    float power_wanted;
+    printf("\nKoliko kW zelite da zatrazite? ");
+    scanf("%f", &power_wanted); 
 
     while (1) {
-        float power_wanted;
-        printf("\nKoliko kW zelite da zatrazite? ");
-        if (scanf("%f", &power_wanted) != 1) break;
-
-        if (power_wanted <= 0) break;
-
         Request req;
         req.request_type = REQUEST_POWER;
         req.power_amount = power_wanted;
@@ -70,6 +67,8 @@ int main(int argc, char const *argv[]) {
             perror("Greska pri prijemu odgovora");
             break;
         }
+        power_wanted *= 2;
+        sleep(1);
     }
 
     printf("Gasenje klijenta...\n");

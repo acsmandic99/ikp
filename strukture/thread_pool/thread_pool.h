@@ -32,4 +32,5 @@ typedef struct ThreadPool
 
 ThreadPool* init_thread_pool(struct Agregator* agregator,int THREADS_NUM, int queue_capacity);
 int thread_pool_add_task(ThreadPool* tp, ClientRequest req);
+void thread_pool_destroy(ThreadPool* tp);
 #endif

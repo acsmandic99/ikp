@@ -17,7 +17,9 @@ void* parent_handler_thread(void* arg)
         if(val_read <= 0)
         {
             printf("\n[Critical] connection to parent is lost!\n");
+            printf("\nSHUTTING DOWN GRACEFULLY\n");
             agregator->waiting_for_parent = 0;
+            agregator->shutdown = 1;
             pthread_cond_broadcast(&agregator->power_notify);
             break;
         }

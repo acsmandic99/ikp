@@ -1,5 +1,6 @@
 #include "../../../strukture/thread_pool/thread_pool.h"
 #include "../../agregator.h"
+#include <math.h>
 #include <stdio.h>
 #include <pthread.h>
 #include <sys/epoll.h>
@@ -16,16 +17,17 @@ void* worker_thread(void* arg) {
     ThreadPool* tp = (ThreadPool*)arg; 
     struct Agregator* agregator = tp->agregator;
 
-    while (1) {
+    while (tp->agregator->shutdown == 0) {
         pthread_mutex_lock(&tp->lock);
 
-        while (tp->queue_size == 0 && !tp->shutdown) {
+        while (tp->queue_size == 0 && !tp->shutdown && !agregator->shutdown) {
             pthread_cond_wait(&tp->notify, &tp->lock);
         }
 
-        if (tp->shutdown) {
+        if (tp->shutdown || agregator->shutdown) {
             pthread_mutex_unlock(&tp->lock);
-            break;
+            printf("[Worker %lu] Gasim se...\n", (unsigned long)pthread_self());
+            return NULL; 
         }
 
         ClientRequest current_request = tp->queue[tp->head];
@@ -36,8 +38,8 @@ void* worker_thread(void* arg) {
         fflush(stdout);
 
         pthread_mutex_unlock(&tp->lock);
-        int spavam = rand()%10;
-        sleep(spavam);
+        //int spavam = rand()%3;
+        //sleep(spavam);
         Request req;
         int valread = recv(current_request.client_fd, &req, sizeof(Request), 0);
         
@@ -55,13 +57,19 @@ void* worker_thread(void* arg) {
                 {
                     printf("\n[Worker] Nema dovoljno struje, pitam roditelja...\n");
                     fflush(stdout);
-                    send_request_for_more_power(agregator, req.power_amount * 5);
+                    send_request_for_more_power(agregator, fabs(agregator->available_power - req.power_amount));
                     agregator->waiting_for_parent = 1;
                 }
 
-                while(agregator->available_power < req.power_amount && agregator->waiting_for_parent == 1)
-                {
+                while(agregator->available_power < req.power_amount && 
+                    agregator->waiting_for_parent == 1 && 
+                    !agregator->shutdown) {
                     pthread_cond_wait(&agregator->power_notify, &agregator->power_lock);
+                }
+
+                if(agregator->shutdown) {
+                    pthread_mutex_unlock(&agregator->power_lock);
+                    return NULL; 
                 }
 
                 if(agregator->available_power >= req.power_amount)
@@ -106,6 +114,8 @@ void* worker_thread(void* arg) {
                 
                 pthread_mutex_lock(&agregator->power_lock);
                 agregator->available_power += cs->current_power_usage;
+                printf("\n[Thread %lu] Klijent na FD %d oslobodio %.2fkW struje\nDostupno %.2fkW struje.\n", (unsigned long)pthread_self(), current_request.client_fd,cs->current_power_usage,agregator->available_power);
+                fflush(stdout);
                 pthread_cond_broadcast(&agregator->power_notify);
                 pthread_mutex_unlock(&agregator->power_lock);
                 

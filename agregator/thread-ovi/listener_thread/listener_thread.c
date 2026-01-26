@@ -10,25 +10,24 @@
 #include <fcntl.h>
 #include "../../agregator.h"
 
-#define PORT 52000
 
 void* create_listener_thread_func(void* arg)
 {
     struct Agregator* agregator = (struct Agregator*)arg;
     Hashmap* hm = agregator->clients;
-    int i = agregator->i;
+    int offset = agregator->offset;
     int epoll_fd = agregator->epoll_fd;
     int server_fd, new_socket;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
     int opt = 1;
-    int port = PORT + i;
+    int port = agregator->listener_port + offset;
     if((server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == 0)
     {
         perror("Socket failed");
         exit(EXIT_FAILURE);
     }
-
+    agregator->listen_fd = server_fd;
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(port);
@@ -45,7 +44,7 @@ void* create_listener_thread_func(void* arg)
         return NULL;
     }
     
-    while(1)
+    while(agregator->shutdown == 0)
     {
 
         struct sockaddr_in address;
@@ -53,6 +52,7 @@ void* create_listener_thread_func(void* arg)
         int new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
         
         if (new_socket < 0) {
+            if (agregator->shutdown) break;
             perror("Accept failed");
             continue; 
         }

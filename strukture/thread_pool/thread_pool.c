@@ -40,7 +40,7 @@ ThreadPool* init_thread_pool(struct Agregator* agregator,int THREADS_NUM, int qu
 
     for (int i = 0; i < THREADS_NUM; i++) {
         if (pthread_create(&(tp->threads[i]), NULL, worker_thread, (void*)tp) != 0) {
-                free(&(tp->threads));
+                free((tp->threads));
                 free(tp->queue);
                 free(tp);
                 return NULL;
@@ -66,4 +66,21 @@ int thread_pool_add_task(ThreadPool* tp, ClientRequest req) {
     pthread_cond_signal(&tp->notify);
     pthread_mutex_unlock(&tp->lock);
     return 0;
+}
+
+void thread_pool_destroy(ThreadPool* tp) {
+    pthread_mutex_lock(&tp->lock);
+    tp->shutdown = 1;
+    pthread_cond_broadcast(&tp->notify);
+    pthread_mutex_unlock(&tp->lock);
+
+    for (int i = 0; i < tp->threads_num; i++) {
+        pthread_join(tp->threads[i], NULL); 
+    }
+
+    free(tp->threads);
+    free(tp->queue);
+    pthread_mutex_destroy(&tp->lock);
+    pthread_cond_destroy(&tp->notify);
+    free(tp);
 }
