@@ -22,7 +22,7 @@ Hashmap* init_hashmap(int capacity)
 //Ako je kapacitet 0,uzimamo podrazumevanu vrednost od 11
     }
     if(capacity <= 0)
-        hm->capacity = 11;
+        hm->capacity = 1009;
     else
         hm->capacity = capacity;
     hm->size = 0;
@@ -40,19 +40,19 @@ Hashmap* init_hashmap(int capacity)
         {
             printf("Error ocurred while taking memory for list in hashmap");
             for (int j = 0; j < i; ++j) 
-                free_list(hm->data[j]);
+                free_list(hm->data[j],0);
             free(hm->data);
             free(hm);
             return NULL;
         }
     }
-    pthread_rwlock_init(&hm->lock, NULL);
+    pthread_mutex_init(&hm->lock, NULL);
     return hm;
 }
 //Dodaje novi elemnt ili update-uje postojeci tim kljucem
 void hash_map_put(Hashmap* hm,int key,void *value)
 {
-    pthread_rwlock_wrlock(&hm->lock);
+    pthread_mutex_lock(&hm->lock);
     int index = (unsigned int)hash(key) % hm->capacity;
     List* lista = hm->data[index];
     Node* curr = lista->head;
@@ -63,7 +63,7 @@ void hash_map_put(Hashmap* hm,int key,void *value)
         {
             free(entry->data);
             entry->data = value;//update
-            pthread_rwlock_unlock(&hm->lock);
+            pthread_mutex_unlock(&hm->lock);
             return;
         }
         curr = curr->next;
@@ -73,7 +73,7 @@ void hash_map_put(Hashmap* hm,int key,void *value)
     if(new_value == NULL)
     {
         printf("\nError ocured when taking memory for hashmap");
-        pthread_rwlock_unlock(&hm->lock);
+        pthread_mutex_unlock(&hm->lock);
         return;
     }
     new_value->key = key;
@@ -86,7 +86,7 @@ void hash_map_put(Hashmap* hm,int key,void *value)
         int new_capacity= next_prime(old_capacity * 2);
         resize(hm,new_capacity);
     }
-    pthread_rwlock_unlock(&hm->lock);
+    pthread_mutex_unlock(&hm->lock);
 }
 void resize(Hashmap* hm,int new_capacity)
 {
@@ -108,14 +108,13 @@ void resize(Hashmap* hm,int new_capacity)
         {
             printf("Error ocurred while taking memory for list in hashmap");
                 for (int j = 0; j < i; ++j) 
-                    free_list(new_data[j]);
+                    free_list(new_data[j],0);
                 free(new_data);
                 return;
         }
     }
     List** old_data = hm->data;
-    hm->data = new_data;
-    hm->capacity = new_capacity;
+
 
     for(int i = 0;i<old_capacity;i++)
     {
@@ -125,19 +124,20 @@ void resize(Hashmap* hm,int new_capacity)
             Entry* value = curr->data;
             int index = (unsigned int)hash(value->key) % new_capacity;
             add_node_to_front(new_data[index], value); 
-            curr = curr->next;
+            Node* next = curr->next;
+            free(curr);
+            curr = next;
+
         }
-        
-    }
-    for(int i = 0;i<old_capacity;i++)
-    {
-        free_list(old_data[i]);
+        free(old_data[i]);
     }
     free(old_data);
+    hm->data = new_data;
+    hm->capacity = new_capacity;
 }
 void* get_value(Hashmap* hm,int key)
 {
-    pthread_rwlock_rdlock(&hm->lock);
+    pthread_mutex_lock(&hm->lock);
     int index = (unsigned int)hash(key) % hm->capacity;
     Node *curr = hm->data[index]->head;
     while(curr)
@@ -145,12 +145,12 @@ void* get_value(Hashmap* hm,int key)
         Entry* data = curr->data;
         if(data->key == key)
         {
-            pthread_rwlock_unlock(&hm->lock);
+            pthread_mutex_unlock(&hm->lock);
             return data->data;
         }
         curr = curr->next;
     }
-    pthread_rwlock_unlock(&hm->lock);
+    pthread_mutex_unlock(&hm->lock);
     return NULL;
 }
 
@@ -158,7 +158,7 @@ void* get_value(Hashmap* hm,int key)
 //data deo ostaje u memoriji
 void* hashmap_remove(Hashmap* hm,int key)
 {
-    pthread_rwlock_wrlock(&hm->lock);
+    pthread_mutex_lock(&hm->lock);
     int index = (unsigned int)hash(key) % hm->capacity;
     Node* curr = hm->data[index]->head;
     while(curr)
@@ -175,18 +175,47 @@ void* hashmap_remove(Hashmap* hm,int key)
                 int new_capacity= next_prime(old_capacity / 2);
                 resize(hm, new_capacity);
             }
-            pthread_rwlock_unlock(&hm->lock);
+            pthread_mutex_unlock(&hm->lock);
             return data;
         }
         curr = curr->next;
     }
-    pthread_rwlock_unlock(&hm->lock);
+    pthread_mutex_unlock(&hm->lock);
+    return NULL;
 }
-
+//oslobadja i data
+void hashmap_remove_and_data(Hashmap* hm,int key)
+{
+    pthread_mutex_lock(&hm->lock);
+        int index = (unsigned int)hash(key) % hm->capacity;
+        Node* curr = hm->data[index]->head;
+        while(curr)
+        {
+            if(((Entry*)curr->data)->key == key)
+            {
+                void* data = ((Entry*)curr->data)->data;
+                free(curr->data);
+                free(data);
+                data = NULL;
+                list_remove_node_at(hm->data[index],curr);
+                hm->size--;
+                if((float)hm->size/hm->capacity < MIN_LOAD_FACTOR)
+                {
+                    int old_capacity = hm->capacity;
+                    int new_capacity= next_prime(old_capacity / 2);
+                    resize(hm, new_capacity);
+                }
+                pthread_mutex_unlock(&hm->lock);
+                return;
+            }
+            curr = curr->next;
+        }
+        pthread_mutex_unlock(&hm->lock);
+}
 //samo sa int-radi testiranja
 void print_hash_map(Hashmap* hm)
 {
-    pthread_rwlock_rdlock(&hm->lock);
+    pthread_mutex_lock(&hm->lock);
     if(hm->size == 0)
     {
         printf("\nHashmap is empty");
@@ -206,26 +235,22 @@ void print_hash_map(Hashmap* hm)
             }
         }
     }
-    pthread_rwlock_unlock(&hm->lock);
+    pthread_mutex_unlock(&hm->lock);
 }
 //Entry->Data se ne oslobadja o tome mora da misli njihov vlasnik
 //moraju se zaustaviti svi thredovi koji rade pa tek onda pozvati
 //free(map)
-void free_hash_map(Hashmap* hm)
-{
-    
-    for(int i =0;i<hm->capacity;i++)
-    {
-        List* lista = hm->data[i];
-        Node* curr = lista->head;
-        while(curr != NULL)
-        {
-            free(curr->data);
-            curr = curr->next;
-        }
-        free_list(lista);
+void free_hash_map(Hashmap* hm, int free_all) {
+    if (!hm) return;
+
+    pthread_mutex_lock(&hm->lock); 
+
+    for(int i = 0; i < hm->capacity; i++) {
+        free_list(hm->data[i], free_all);
     }
-    pthread_rwlock_destroy(&hm->lock);
+
+    pthread_mutex_unlock(&hm->lock);
+    pthread_mutex_destroy(&hm->lock);
     free(hm->data);
     free(hm);
 }

@@ -1,6 +1,7 @@
 #include "list.h"
 #include <stdio.h>
 #include <stdlib.h> 
+#include "../hashmapa/hashmap.h"
 
 List* create_list()
 {
@@ -133,13 +134,18 @@ void list_remove_node_at(List* list,Node* node)
     free(node);
     list->size--;
 }
-void free_list(List *list)
-{
-    Node *next = NULL;
+void free_list(List *list, int free_internal_data) {
+    if (!list) return;
     Node *current = list->head;
-    while(current)
-    {
+    while(current) {
         Node *next = current->next;
+        if (free_internal_data && current->data) {
+            Entry* entry = (Entry*)current->data;
+            if (entry->data) free(entry->data); 
+            free(entry); 
+        } else if (current->data) {
+            free(current->data); 
+        }
         free(current);
         current = next;
     }

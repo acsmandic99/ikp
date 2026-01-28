@@ -2,6 +2,7 @@
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -9,7 +10,7 @@
 #include "listener_thread.h"
 #include <fcntl.h>
 #include "../../agregator.h"
-
+#include <poll.h>
 
 void* create_listener_thread_func(void* arg)
 {
@@ -43,40 +44,63 @@ void* create_listener_thread_func(void* arg)
         perror("Listen");
         return NULL;
     }
-    
-    while(agregator->shutdown == 0)
-    {
 
-        struct sockaddr_in address;
-        int addrlen = sizeof(address);
-        int new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-        
-        if (new_socket < 0) {
+    long long id = 0;
+
+    struct pollfd pfd;
+    pfd.fd = server_fd;
+    pfd.events = POLLIN; 
+
+    while(agregator->shutdown == 0) {
+        int ret = poll(&pfd, 1, 500);
+
+        if (ret < 0) {
             if (agregator->shutdown) break;
-            perror("Accept failed");
-            continue; 
+            perror("Poll failed");
+            break;
         }
-        fcntl(new_socket, F_SETFL, O_NONBLOCK);
 
-        Client* cs = (Client*)malloc(sizeof(Client));
-        cs->client_fd = new_socket;
-        cs->client_id = rand(); 
-        cs->current_power_usage = 0; 
+        if (ret == 0) {
+            continue;
+        }
 
-        hash_map_put(agregator->clients, new_socket, cs);
+        if (pfd.revents & POLLIN) {
+            struct sockaddr_in client_address;
+            int client_addrlen = sizeof(client_address);
+            int new_socket = accept(server_fd, (struct sockaddr*)&client_address, (socklen_t*)&client_addrlen);
+            
+            if (new_socket < 0) {
+                if (agregator->shutdown) break;
+                perror("Accept failed");
+                continue; 
+            }
 
-        struct epoll_event ev;
-        ev.events = EPOLLIN | EPOLLET | EPOLLONESHOT;   
-        ev.data.fd = new_socket; 
+            fcntl(new_socket, F_SETFL, O_NONBLOCK);
 
-        if(epoll_ctl(agregator->epoll_fd, EPOLL_CTL_ADD, new_socket, &ev) == -1) {
-            perror("epoll_ctl ADD failed");
-            hashmap_remove(agregator->clients, new_socket);
-            close(new_socket);
-            free(cs);
-        } else {
-            printf("\nNovi klijent na FD %d spreman za radnike.\n", new_socket);
+            Client* cs = (Client*)malloc(sizeof(Client));
+            cs->client_fd = new_socket;
+            cs->client_id = ++id; 
+            cs->current_power_usage = 0; 
+
+            hash_map_put(agregator->clients, new_socket, cs);
+
+            struct epoll_event ev;
+            memset(&ev, 0, sizeof(ev));
+            ev.events = EPOLLIN | EPOLLET | EPOLLONESHOT;   
+            ev.data.fd = new_socket; 
+
+            if(epoll_ctl(agregator->epoll_fd, EPOLL_CTL_ADD, new_socket, &ev) == -1) {
+                perror("epoll_ctl ADD failed");
+                hashmap_remove_and_data(agregator->clients, new_socket);
+                close(new_socket);
+                if(cs != NULL) free(cs);
+            } else {
+                printf("\nNovi klijent na FD %d spreman za radnike.\n", new_socket);
+            }
         }
     }
+    
+    close(server_fd);
+    printf("[Listener] Thread exited cleanly.\n");
     return NULL;
 }

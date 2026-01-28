@@ -34,6 +34,9 @@ typedef struct Agregator{
     pthread_t listener_tid;
     pthread_t epoll_tid;
     pthread_t parent_tid;
+
+    
+
 } Agregator;
 
 Agregator* init_agregator(int offset,int num_threads,int queue_size,int listener_port,int parent_port);

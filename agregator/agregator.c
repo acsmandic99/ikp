@@ -33,6 +33,7 @@ Agregator* init_agregator(int offset,int num_threads,int queue_size,int listener
     pthread_mutex_init(&agregator->power_lock, NULL);
     pthread_cond_init(&agregator->power_notify,NULL);
 
+
     agregator->clients = init_hashmap(101); 
 
     agregator->epoll_fd = epoll_create1(0);
@@ -105,7 +106,6 @@ void* start_epoll_loop(void* arg) {
         for (int i = 0; i < nfds; i++) {
             ClientRequest req;
             req.client_fd = events[i].data.fd;
-            
             Client* c = (Client*)get_value(agregator->clients, req.client_fd);
             if (c) {
                 req.client_id = c->client_id;
@@ -131,22 +131,38 @@ void destroy_agregator(Agregator* agregator) {
     pthread_mutex_lock(&agregator->power_lock);
     pthread_cond_broadcast(&agregator->power_notify);
     pthread_mutex_unlock(&agregator->power_lock);
-
+    
     pthread_mutex_lock(&agregator->tp->lock);
     pthread_cond_broadcast(&agregator->tp->notify);
     pthread_mutex_unlock(&agregator->tp->lock);
+
+    printf("\nJavljeno worker threadovima\n");
 
     close(agregator->listen_fd); 
     close(agregator->epoll_fd);
     close(agregator->parent_fd);
 
+    printf("\nZatvoreni soketi\n");
+
     pthread_join(agregator->listener_tid, NULL);
+    printf("\nJoinovao se listener\n");
+
     pthread_join(agregator->epoll_tid, NULL);
+    printf("\nJoinovao se epoll\n");
+
     pthread_join(agregator->parent_tid, NULL);
+    printf("\nJoinovao se parent\n");
+
+
+    printf("\nJoinovali se listener,epoll i parent thread-ovi\n");
 
     thread_pool_destroy(agregator->tp);
 
-    free_hash_map(agregator->clients);
+    printf("\nUnisten threadpool\n");
+
+    free_hash_map(agregator->clients,1);
+
+    printf("\nUnisten hashmap\n");
     pthread_mutex_destroy(&agregator->power_lock);
     pthread_cond_destroy(&agregator->power_notify);
     

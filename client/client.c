@@ -1,4 +1,4 @@
-#include "messages/messages.h"
+#include "../messages/messages.h"
 #include <netinet/in.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -11,7 +11,6 @@ int main(int argc, char const *argv[]) {
     struct sockaddr_in serv_addr;
     int port;
 
-    // Dozvoljavamo unos porta preko konzole ili koristimo tvoj default 52000
     printf("Unesite port agregatora (default 52000): ");
     if (scanf("%d", &port) != 1) port = 52000;
 
@@ -67,8 +66,7 @@ int main(int argc, char const *argv[]) {
             perror("Greska pri prijemu odgovora");
             break;
         }
-        power_wanted *= 2;
-        sleep(1);
+        power_wanted += 2;
     }
 
     printf("Gasenje klijenta...\n");

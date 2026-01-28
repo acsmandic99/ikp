@@ -1,5 +1,6 @@
 #include "thread_pool.h"
 #include <pthread.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
@@ -77,7 +78,7 @@ void thread_pool_destroy(ThreadPool* tp) {
     for (int i = 0; i < tp->threads_num; i++) {
         pthread_join(tp->threads[i], NULL); 
     }
-
+    printf("\n Unisteni worker threadovi\n");
     free(tp->threads);
     free(tp->queue);
     pthread_mutex_destroy(&tp->lock);

@@ -3,6 +3,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <string.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -26,16 +27,16 @@ void* worker_thread(void* arg) {
 
         if (tp->shutdown || agregator->shutdown) {
             pthread_mutex_unlock(&tp->lock);
-            printf("[Worker %lu] Gasim se...\n", (unsigned long)pthread_self());
+            //printf("[Worker %lu] Gasim se...\n", (unsigned long)pthread_self());
             return NULL; 
         }
 
         ClientRequest current_request = tp->queue[tp->head];
         tp->head = (tp->head + 1) % tp->queue_capacity;
         tp->queue_size--;
-        fflush(stdout);
-        printf("\n[Thread %lu] Preuzimam FD %d iz reda...", (unsigned long)pthread_self(), current_request.client_fd);
-        fflush(stdout);
+        //fflush(stdout);
+        //printf("\n[Thread %lu] Preuzimam FD %d iz reda...", (unsigned long)pthread_self(), current_request.client_fd);
+        //fflush(stdout);
 
         pthread_mutex_unlock(&tp->lock);
         //int spavam = rand()%3;
@@ -46,8 +47,8 @@ void* worker_thread(void* arg) {
         if (valread > 0) {
             if(req.request_type == REQUEST_POWER)
             {
-                printf("\n[Thread %lu] FD %d traži %fkW", (unsigned long)pthread_self(), current_request.client_fd, req.power_amount);
-                fflush(stdout);
+                //printf("\n[Thread %lu] FD %d traži %fkW", (unsigned long)pthread_self(), current_request.client_fd, req.power_amount);
+                //fflush(stdout);
 
                 
                 int approved = 0; 
@@ -55,8 +56,8 @@ void* worker_thread(void* arg) {
                 pthread_mutex_lock(&agregator->power_lock);
                 if(agregator->available_power < req.power_amount && agregator->waiting_for_parent == 0)
                 {
-                    printf("\n[Worker] Nema dovoljno struje, pitam roditelja...\n");
-                    fflush(stdout);
+                    //printf("\n[Worker] Nema dovoljno struje, pitam roditelja...\n");
+                    //fflush(stdout);
                     send_request_for_more_power(agregator, fabs(agregator->available_power - req.power_amount));
                     agregator->waiting_for_parent = 1;
                 }
@@ -84,38 +85,41 @@ void* worker_thread(void* arg) {
                 {
                     Client* c = (Client*)get_value(agregator->clients, current_request.client_fd);
                     if(c) c->current_power_usage += req.power_amount;
-                    printf("\n[Thread %lu] klijentu FD %d odobreno %.2fkW struje",(unsigned long)pthread_self(), current_request.client_fd,req.power_amount);
-                    fflush(stdout);
+                    // printf("\n[Thread %lu] klijentu FD %d odobreno %.2fkW struje",(unsigned long)pthread_self(), current_request.client_fd,req.power_amount);
+                    // fflush(stdout);
                     send_approved_response_to_client(current_request.client_fd, req.power_amount);
                 }
                 else 
                 {
-                    fflush(stdout);
-                    printf("\n[Worker] Zahtev za FD %d odbijen (nema resursa).", current_request.client_fd);
-                    fflush(stdout);
+                    // fflush(stdout);
+                    // printf("\n[Worker] Zahtev za FD %d odbijen (nema resursa).", current_request.client_fd);
+                    // fflush(stdout);
                     send_rejected_response_to_client(current_request.client_fd);
                 }
             }
 
             struct epoll_event ev;
+            memset(&ev, 0, sizeof(ev));
             ev.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
             ev.data.fd = current_request.client_fd;
             if(epoll_ctl(agregator->epoll_fd, EPOLL_CTL_MOD, current_request.client_fd, &ev) == -1) {
                 perror("epoll_ctl MOD failed");
             }
         } else if (valread == 0) {
-            printf("\n[Thread %lu] Klijent na FD %d se diskonektovao.\n", (unsigned long)pthread_self(), current_request.client_fd);
-            fflush(stdout);
+            // printf("\n[Thread %lu] Klijent na FD %d se diskonektovao.\n", (unsigned long)pthread_self(), current_request.client_fd);
+            // fflush(stdout);
             Client* cs = (Client*)get_value(agregator->clients, current_request.client_fd);
+
             
             // Proveravamo da li klijent postoji I da li je to onaj isti koji je poslao ovaj zahtev
             if(cs != NULL && cs->client_id == current_request.client_id) {
                 hashmap_remove(agregator->clients, current_request.client_fd);
+
                 
                 pthread_mutex_lock(&agregator->power_lock);
                 agregator->available_power += cs->current_power_usage;
-                printf("\n[Thread %lu] Klijent na FD %d oslobodio %.2fkW struje\nDostupno %.2fkW struje.\n", (unsigned long)pthread_self(), current_request.client_fd,cs->current_power_usage,agregator->available_power);
-                fflush(stdout);
+                // printf("\n[Thread %lu] Klijent na FD %d oslobodio %.2fkW struje\nDostupno %.2fkW struje.\n", (unsigned long)pthread_self(), current_request.client_fd,cs->current_power_usage,agregator->available_power);
+                // fflush(stdout);
                 pthread_cond_broadcast(&agregator->power_notify);
                 pthread_mutex_unlock(&agregator->power_lock);
                 

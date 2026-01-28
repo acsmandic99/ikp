@@ -12,7 +12,7 @@ int main() {
     int listener_port;
     scanf("%d",&listener_port);
     Agregator* aggr = init_agregator(0, 4, 100,listener_port,port);
-
+    sleep(1);
     Agregator* pod_agregatori[10];
     for(int i = 0; i < 10; i++)
     {
@@ -25,10 +25,16 @@ int main() {
         return 1;
     }
 
-    printf("Server podignut. Cekam klijente na portu 52000...\n");
+    printf("Server podignut. Cekam klijente na portu %d...\n",listener_port);
     while(aggr->shutdown == 0) {
     sleep(1);
     }   
     destroy_agregator(aggr);
+    
+    for(int i = 0; i < 10;i++)
+    {
+        destroy_agregator(pod_agregatori[i]);
+        sleep(1);
+    }
     return 0;
 }
